@@ -99,9 +99,15 @@ binary_sensor:
   - platform: template
     id: is_loud_noise
     lambda: 'return id(sound_peak).state > -16.0;'
+    filters:
+      - delayed_off: 500ms
     on_press:
       then:
-        - script.execute: scared_reaction
+        - if:
+            condition:
+              lambda: 'return !id(is_scared);'
+            then:
+              - script.execute: scared_reaction
 
 globals:
   - id: init_in_progress
