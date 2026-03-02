@@ -193,15 +193,10 @@ interval:
             lambda: 'return !id(init_in_progress);'
           then:
             - component.update: s3_box_lcd
-  - interval: 1h
+  - interval: 15min
     then:
       - lambda: |-
-          float current = id(happiness_meter).state;
-          if (current > 0) {
-            id(happiness_meter).publish_state(current - 1);
-          } else if (current < 0) {
-            id(happiness_meter).publish_state(current + 1);
-          }
+          id(happiness_meter).publish_state(id(happiness_meter).state * .95);
 
 script:
   - id: neutral_animation
