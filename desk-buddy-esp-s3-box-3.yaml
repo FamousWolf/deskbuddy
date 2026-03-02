@@ -143,6 +143,48 @@ number:
     initial_value: 0
     icon: "mdi:emoticon-happy-outline"
 
+image:
+  - file: mdi:numeric-1-box
+    id: icon_1
+    type: grayscale
+    transparency: alpha_channel
+    resize: 24x24
+  - file: mdi:numeric-2-box
+    id: icon_2
+    type: grayscale
+    transparency: alpha_channel
+    resize: 24x24
+  - file: mdi:numeric-3-box
+    id: icon_3
+    type: grayscale
+    transparency: alpha_channel
+    resize: 24x24
+  - file: mdi:numeric-4-box
+    id: icon_4
+    type: grayscale
+    transparency: alpha_channel
+    resize: 24x24
+  - file: mdi:numeric-5-box
+    id: icon_5
+    type: grayscale
+    transparency: alpha_channel
+    resize: 24x24
+  - file: mdi:numeric-6-box
+    id: icon_6
+    type: grayscale
+    transparency: alpha_channel
+    resize: 24x24
+  - file: mdi:numeric-7-box
+    id: icon_7
+    type: grayscale
+    transparency: alpha_channel
+    resize: 24x24
+  - file: mdi:numeric-8-box
+    id: icon_8
+    type: grayscale
+    transparency: alpha_channel
+    resize: 24x24
+
 interval:
   - interval: 40ms
     then:
@@ -245,6 +287,15 @@ display:
     pages:
       - id: eye_page
         lambda: |-
+          it.image(8, 8, id(icon_1), Color(0,255,0), Color(0,0,0));
+          it.image(48, 8, id(icon_2), Color(255,0,0), Color(0,0,0));
+          it.image(88, 8, id(icon_3), Color(0,255,0), Color(0,0,0));
+          it.image(128, 8, id(icon_4), Color(0,255,0), Color(0,0,0));
+          it.image(168, 8, id(icon_5), Color(0,255,0), Color(0,0,0));
+          it.image(208, 8, id(icon_6), Color(255,0,0), Color(0,0,0));
+          it.image(248, 8, id(icon_7), Color(255,0,0), Color(0,0,0));
+          it.image(288, 8, id(icon_8), Color(0,255,0), Color(0,0,0));
+          
           id(eye_x_current) += (id(eye_x_target) - id(eye_x_current)) * 0.15f;
           
           float happy = id(happiness_meter).state;
