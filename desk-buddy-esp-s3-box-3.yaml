@@ -1,6 +1,8 @@
 esphome:
   name: desk-buddy-esp-s3-box-3
   friendly_name: Desk Buddy
+  includes:
+    - draw.h
   on_boot:
     priority: -100
     then:
@@ -245,7 +247,7 @@ display:
           float x_off = id(eye_x_current);
           int eye_w = 60;
           int eye_h = (int)(80 * id(eye_height_pct));
-          int spacing = 40;
+          int spacing = 20;
           int cx = it.get_width() / 2;
           int cy = it.get_height() / 2;
           
@@ -266,38 +268,25 @@ display:
           }
           // --- PETTED / LOVE STATE ---
           else if (id(is_petted)) {
-            int centers[2] = {lx + 30, rx + 30};
-            for (int h_cx : centers) {
-               it.filled_circle(h_cx - 15, cy - 10, 15, love_color);
-               it.filled_circle(h_cx + 15, cy - 10, 15, love_color);
-               it.filled_triangle(h_cx - 30, cy - 5, h_cx + 30, cy - 5, h_cx, cy + 30, love_color);
-            }
+            Draw::heart(it, lx, cy - 30, 60, love_color);
+            Draw::heart(it, rx, cy - 30, 60, love_color);
           }
           // --- HAPPY STATE ---
           else if (happy > 50) {
-            int outer_radius = eye_w / 2;
-            int inner_radius = outer_radius - 12;
-            int blink_nudge = (int)(15 * (1.0f - id(eye_height_pct)));
-            int active_cy = cy + blink_nudge;
-            if (id(eye_height_pct) > 0.1) {
-              it.filled_circle(lx + outer_radius, active_cy, outer_radius, eye_color);
-              it.filled_circle(lx + outer_radius, active_cy + 4, inner_radius, bg_color);
-              it.filled_rectangle(lx - 2, active_cy, eye_w + 4, outer_radius + 2, bg_color);
-              it.filled_circle(rx + outer_radius, active_cy, outer_radius, eye_color);
-              it.filled_circle(rx + outer_radius, active_cy + 4, inner_radius, bg_color);
-              it.filled_rectangle(rx - 2, active_cy, eye_w + 4, outer_radius + 2, bg_color);
-            }
+            eye_h = eye_h * .25;
+            int adjusted_cy = cy - 30;
+            Draw::topHalfOval(it, lx, adjusted_cy - (eye_h / 2), eye_w, eye_h, eye_color);
+            Draw::topHalfOval(it, rx, adjusted_cy - (eye_h / 2), eye_w, eye_h, eye_color);
           }
           // --- SAD STATE ---
           else if (happy < -50) {
+            eye_h = eye_h * .75;
             int adjusted_cy = cy + 30;
-            it.filled_rectangle(lx, adjusted_cy, eye_w, eye_h / 2, eye_color);
-            it.filled_triangle(lx, adjusted_cy, lx + eye_w - 1, adjusted_cy, lx + eye_w - 1, adjusted_cy - (eye_h / 2), eye_color);
-            it.filled_rectangle(rx, adjusted_cy, eye_w, eye_h / 2, eye_color);
-            it.filled_triangle(rx, adjusted_cy, rx + eye_w - 1, adjusted_cy, rx, adjusted_cy - (eye_h / 2), eye_color);
+            Draw::roundedRectangleWithOverlayTriangle(it, lx, adjusted_cy - (eye_h / 2), eye_w, eye_h, 15, eye_color, bg_color, lx, adjusted_cy, true);
+            Draw::roundedRectangleWithOverlayTriangle(it, rx, adjusted_cy - (eye_h / 2), eye_w, eye_h, 15, eye_color, bg_color, rx + eye_w, adjusted_cy, false);
           }
           // --- NEUTRAL STATE ---
           else {
-            it.filled_rectangle(lx, cy - (eye_h / 2), eye_w, eye_h, eye_color);
-            it.filled_rectangle(rx, cy - (eye_h / 2), eye_w, eye_h, eye_color);
+            Draw::roundedRectangle(it, lx, cy - (eye_h / 2), eye_w, eye_h, 15, eye_color);
+            Draw::roundedRectangle(it, rx, cy - (eye_h / 2), eye_w, eye_h, 15, eye_color);
           }
