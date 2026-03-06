@@ -2,12 +2,17 @@ esphome:
   name: desk-buddy-esp-s3-box-3
   friendly_name: Desk Buddy
   includes:
-    - draw.h
+    - Draw.h
+    - DeskBuddyState.h
+    - EyeAnimator.h
+    - EyeAnimator.cpp
+    - EyeRenderer.h
+    - EyeRenderer.cpp
   on_boot:
     priority: -100
     then:
       - delay: 1s
-      - lambda: 'id(init_in_progress) = false;'
+      - lambda: 'DeskBuddyState::getInstance().init_in_progress = false;'
       - script.execute: neutral_animation
       - display.page.show: eye_page
 
@@ -105,28 +110,6 @@ binary_sensor:
       then:
         - script.execute: scared_reaction
 
-globals:
-  - id: init_in_progress
-    type: bool
-    restore_value: no
-    initial_value: "true"
-  - id: eye_x_target
-    type: int
-    initial_value: "0"
-  - id: eye_x_current
-    type: float
-    initial_value: "0.0"
-  - id: eye_height_pct
-    type: float
-    initial_value: "1.0"
-  - id: is_petted
-    type: bool
-    restore_value: no
-    initial_value: "false"
-  - id: is_scared
-    type: bool
-    restore_value: no
-    initial_value: "false"
 
 number:
   - platform: template
@@ -144,18 +127,19 @@ interval:
     then:
       - if:
           condition:
-            lambda: 'return !id(init_in_progress);'
+            lambda: 'return !DeskBuddyState::getInstance().init_in_progress;'
           then:
             - component.update: s3_box_lcd
   - interval: 1h
     then:
       - lambda: |-
-          float current = id(happiness_meter).state;
-          if (current > 0) {
-            id(happiness_meter).publish_state(current - 1);
-          } else if (current < 0) {
-            id(happiness_meter).publish_state(current + 1);
+          auto& state = DeskBuddyState::getInstance();
+          if (state.happiness_level > 0) {
+            state.addHappiness(-1);
+          } else if (state.happiness_level < 0) {
+            state.addHappiness(1);
           }
+          id(happiness_meter).publish_state(state.happiness_level);
 
 script:
   - id: neutral_animation
@@ -165,50 +149,32 @@ script:
           condition:
             lambda: 'return true;'
           then:
-            - lambda: |-
-                int choice = esp_random() % 10; 
-                if (choice < 3) { 
-                  id(eye_animation_blink).execute();
-                } else if (choice < 6) { 
-                  id(eye_x_target) = (esp_random() % 81) - 40;
-                }
+            - lambda: 'EyeAnimator::performRandomAction();'
             - delay: 2s
 
   - id: eye_animation_blink
     mode: restart
     then:
-      - repeat:
-          count: 5
-          then:
-            - lambda: 'id(eye_height_pct) -= 0.2;'
-            - delay: 16ms
-      - repeat:
-          count: 5
-          then:
-            - lambda: 'id(eye_height_pct) += 0.2;'
-            - delay: 16ms
-      - lambda: 'id(eye_height_pct) = 1.0;'
+      - lambda: 'EyeAnimator::performBlink();'
 
   - id: pet_interaction
     mode: restart
     then:
-      - lambda: 'id(is_petted) = true;'
+      - lambda: 'DeskBuddyState::getInstance().is_petted = true;'
       - component.update: s3_box_lcd
       - delay: 2s
-      - lambda: 'id(is_petted) = false;'
+      - lambda: 'DeskBuddyState::getInstance().is_petted = false;'
       - component.update: s3_box_lcd
 
   - id: scared_reaction
     mode: restart
     then:
       - lambda: |-
-          id(is_scared) = true;
-          float current = id(happiness_meter).state;
-          id(happiness_meter).publish_state(std::max(-100.0f, current - 15.0f));
-          ESP_LOGI("scare", "Scare! Happiness: %.1f", id(happiness_meter).state);
+          EyeAnimator::handleScaredReaction();
+          id(happiness_meter).publish_state(DeskBuddyState::getInstance().happiness_level);
       - component.update: s3_box_lcd
       - delay: 2s
-      - lambda: 'id(is_scared) = false;'
+      - lambda: 'DeskBuddyState::getInstance().is_scared = false;'
       - component.update: s3_box_lcd
 
 touchscreen:
@@ -221,9 +187,8 @@ touchscreen:
   on_touch:
     then:
       - lambda: |-
-          float current = id(happiness_meter).state;
-          id(happiness_meter).publish_state(std::min(100.0f, current + 5.0f));
-          ESP_LOGI("touch", "Pet! Happiness: %.1f", id(happiness_meter).state);
+          EyeAnimator::handlePetInteraction();
+          id(happiness_meter).publish_state(DeskBuddyState::getInstance().happiness_level);
       - script.execute: pet_interaction
 
 display:
@@ -240,53 +205,4 @@ display:
     update_interval: never
     pages:
       - id: eye_page
-        lambda: |-
-          id(eye_x_current) += (id(eye_x_target) - id(eye_x_current)) * 0.15f;
-          
-          float happy = id(happiness_meter).state;
-          float x_off = id(eye_x_current);
-          int eye_w = 60;
-          int eye_h = (int)(80 * id(eye_height_pct));
-          int spacing = 20;
-          int cx = it.get_width() / 2;
-          int cy = it.get_height() / 2;
-          
-          Color eye_color = Color(0, 255, 255);
-          Color love_color = Color(255, 50, 50);
-          Color bg_color = Color(0, 0, 0);
-          
-          int lx = cx - spacing - eye_w + (int)x_off;
-          int rx = cx + spacing + (int)x_off;
-          
-          // --- SCARED STATE ---
-          if (id(is_scared)) {
-            int jitter_x = (millis() % 12) - 6;
-            int jitter_y = (millis() % 8) - 4;
-
-            it.filled_circle(lx + 30 + jitter_x, cy + jitter_y, 12, eye_color);
-            it.filled_circle(rx + 30 + jitter_x, cy + jitter_y, 12, eye_color);
-          }
-          // --- PETTED / LOVE STATE ---
-          else if (id(is_petted)) {
-            Draw::heart(it, lx, cy - 30, 60, love_color);
-            Draw::heart(it, rx, cy - 30, 60, love_color);
-          }
-          // --- HAPPY STATE ---
-          else if (happy > 50) {
-            eye_h = eye_h * .25;
-            int adjusted_cy = cy - 30;
-            Draw::topHalfOval(it, lx, adjusted_cy - (eye_h / 2), eye_w, eye_h, eye_color);
-            Draw::topHalfOval(it, rx, adjusted_cy - (eye_h / 2), eye_w, eye_h, eye_color);
-          }
-          // --- SAD STATE ---
-          else if (happy < -50) {
-            eye_h = eye_h * .75;
-            int adjusted_cy = cy + 30;
-            Draw::roundedRectangleWithOverlayTriangle(it, lx, adjusted_cy - (eye_h / 2), eye_w, eye_h, 15, eye_color, bg_color, lx, adjusted_cy, true);
-            Draw::roundedRectangleWithOverlayTriangle(it, rx, adjusted_cy - (eye_h / 2), eye_w, eye_h, 15, eye_color, bg_color, rx + eye_w, adjusted_cy, false);
-          }
-          // --- NEUTRAL STATE ---
-          else {
-            Draw::roundedRectangle(it, lx, cy - (eye_h / 2), eye_w, eye_h, 15, eye_color);
-            Draw::roundedRectangle(it, rx, cy - (eye_h / 2), eye_w, eye_h, 15, eye_color);
-          }
+        lambda: 'EyeRenderer::render(it);'
