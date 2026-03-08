@@ -134,7 +134,7 @@ number:
     on_value:
       then:
         - lambda: |-
-            Status::getInstance().setHappiness(id(happiness_meter).state);
+            Status::getInstance().setHappiness(id(happiness_meter).state, true, true);
 
 interval:
   - interval: 40ms
