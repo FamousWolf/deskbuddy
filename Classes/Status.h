@@ -60,8 +60,23 @@ public:
         return lastHappinessChange < esphome::millis() - milliseconds;
     }
 
+    void forceState(std::string state) {
+        ESP_LOGI("forcestate", "Forced state: %s", state.c_str());
+
+        if (state == "Auto") {
+            state = "";
+        }
+
+        forcedState = state;
+    }
+
+    bool hasForcedState(std::string state) {
+        return state == forcedState;
+    }
+
 private:
     Status() = default;
     int happinessLevel = id(happiness_meter).state;
     int lastHappinessChange = esphome::millis();
+    std::string forcedState = "";
 };

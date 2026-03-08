@@ -8,7 +8,8 @@ namespace States {
     class Happy : public BaseState {
     public:
         bool isActive() override {
-            return Status::getInstance().getHappiness() > 50.0f;
+            Status& status = Status::getInstance();
+            return status.hasForcedState("") && status.getHappiness() > 50.0f || status.hasForcedState("Happy");
         }
 
         void render(esphome::display::Display& display, float x, float y, float blinkPercentage, Color eyeColor, Color backgroundColor) override {

@@ -136,6 +136,23 @@ number:
         - lambda: |-
             Status::getInstance().setHappiness(id(happiness_meter).state, true, true);
 
+select:
+    - platform: template
+      name: "State"
+      id: state_selector
+      optimistic: true
+      icon: "mdi:emoticon-happy-outline"
+      options:
+        - "Auto"
+        - "Happy"
+        - "Loved"
+        - "Neutral"
+        - "Sad"
+        - "Scared"
+      on_value:
+        then:
+          - lambda: |-
+              Status::getInstance().forceState(id(state_selector).current_option());
 interval:
   - interval: 40ms
     then:
