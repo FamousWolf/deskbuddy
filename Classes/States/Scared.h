@@ -8,7 +8,8 @@ namespace States {
     class Scared : public BaseState {
     public:
         bool isActive() override {
-            return Status::getInstance().isScared;
+            Status& status = Status::getInstance();
+            return status.hasForcedState("") && status.isScared || status.hasForcedState("Scared");
         }
 
         void render(esphome::display::Display& display, float x, float y, float blinkPercentage, Color eyeColor, Color backgroundColor) override {

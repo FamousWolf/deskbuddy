@@ -8,7 +8,8 @@ namespace States {
     class Loved : public BaseState {
     public:
         bool isActive() override {
-            return Status::getInstance().isLoved;
+            Status& status = Status::getInstance();
+            return status.hasForcedState("") && status.isLoved || status.hasForcedState("Loved");
         }
 
         void render(esphome::display::Display& display, float x, float y, float blinkPercentage, Color eyeColor, Color backgroundColor) override {
