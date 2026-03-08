@@ -2,18 +2,17 @@ esphome:
   name: desk-buddy-esp-s3-box-3
   friendly_name: Desk Buddy
   includes:
-    - Draw.h
-    - DeskBuddyState.h
-    - EyeAnimator.h
-    - EyeAnimator.cpp
-    - EyeRenderer.h
-    - EyeRenderer.cpp
+    - Classes/
+  platformio_options:
+    build_flags:
+      - '-IClasses/'
   on_boot:
     priority: -100
     then:
       - delay: 1s
-      - lambda: 'DeskBuddyState::getInstance().init_in_progress = false;'
-      - script.execute: neutral_animation
+      - lambda: 'DeskBuddy::getInstance().initInProgress = false;'
+      - script.execute: blink_animation
+      - script.execute: horizontal_move_animation
       - display.page.show: eye_page
 
 esp32:
@@ -110,73 +109,6 @@ binary_sensor:
       then:
         - script.execute: scared_reaction
 
-
-number:
-  - platform: template
-    name: "Happiness Level"
-    id: happiness_meter
-    optimistic: true
-    min_value: -100
-    max_value: 100
-    step: 1
-    initial_value: 0
-    icon: "mdi:emoticon-happy-outline"
-
-interval:
-  - interval: 40ms
-    then:
-      - if:
-          condition:
-            lambda: 'return !DeskBuddyState::getInstance().init_in_progress;'
-          then:
-            - component.update: s3_box_lcd
-  - interval: 1h
-    then:
-      - lambda: |-
-          auto& state = DeskBuddyState::getInstance();
-          if (state.happiness_level > 0) {
-            state.addHappiness(-1);
-          } else if (state.happiness_level < 0) {
-            state.addHappiness(1);
-          }
-          id(happiness_meter).publish_state(state.happiness_level);
-
-script:
-  - id: neutral_animation
-    mode: parallel
-    then:
-      - while:
-          condition:
-            lambda: 'return true;'
-          then:
-            - lambda: 'EyeAnimator::performRandomAction();'
-            - delay: 2s
-
-  - id: eye_animation_blink
-    mode: restart
-    then:
-      - lambda: 'EyeAnimator::performBlink();'
-
-  - id: pet_interaction
-    mode: restart
-    then:
-      - lambda: 'DeskBuddyState::getInstance().is_petted = true;'
-      - component.update: s3_box_lcd
-      - delay: 2s
-      - lambda: 'DeskBuddyState::getInstance().is_petted = false;'
-      - component.update: s3_box_lcd
-
-  - id: scared_reaction
-    mode: restart
-    then:
-      - lambda: |-
-          EyeAnimator::handleScaredReaction();
-          id(happiness_meter).publish_state(DeskBuddyState::getInstance().happiness_level);
-      - component.update: s3_box_lcd
-      - delay: 2s
-      - lambda: 'DeskBuddyState::getInstance().is_scared = false;'
-      - component.update: s3_box_lcd
-
 touchscreen:
   platform: gt911
   id: s3_box_touch
@@ -186,10 +118,79 @@ touchscreen:
     ignore_strapping_warning: true
   on_touch:
     then:
+      - script.execute: loved_reaction
+
+number:
+  - platform: template
+    name: "Happiness Level"
+    id: happiness_meter
+    optimistic: true
+    min_value: -100
+    max_value: 100
+    step: 1
+    restore_value: true
+    initial_value: 0
+    icon: "mdi:emoticon-happy-outline"
+    on_value:
+      then:
+        - lambda: |-
+            Status::getInstance().setHappiness(id(happiness_meter).state);
+
+interval:
+  - interval: 40ms
+    then:
+      - if:
+          condition:
+            lambda: 'return !DeskBuddy::getInstance().initInProgress;'
+          then:
+            - component.update: s3_box_lcd
+  - interval: 15min
+    then:
+      - lambda: 'Status::getInstance().decayHappiness();'
+
+script:
+  - id: blink_animation
+    mode: parallel
+    then:
+      - while:
+          condition:
+            lambda: 'return true;'
+          then:
+            - delay: !lambda "return (esp_random() % 10001) + 3000;"
+            - if:
+                condition:
+                  lambda: 'return esp_random() % 10 < 1;'
+                then:
+                  - lambda: 'DeskBuddy::getInstance().startBlinking();'
+                  - delay: 250ms
+                  - lambda: 'DeskBuddy::getInstance().startBlinking();'
+                else:
+                  - lambda: 'DeskBuddy::getInstance().startBlinking();'
+  - id: horizontal_move_animation
+    mode: parallel
+    then:
+      - while:
+          condition:
+            lambda: 'return true;'
+          then:
+            - delay: !lambda "return (esp_random() % 15001) + 5000;"
+            - lambda: 'DeskBuddy::getInstance().startHorizontalMove();'
+  - id: scared_reaction
+    mode: restart
+    then:
       - lambda: |-
-          EyeAnimator::handlePetInteraction();
-          id(happiness_meter).publish_state(DeskBuddyState::getInstance().happiness_level);
-      - script.execute: pet_interaction
+          Status::getInstance().isScared = true;
+          Status::getInstance().addHappiness(-10);
+      - delay: 2s
+      - lambda: 'Status::getInstance().isScared = false;'
+  - id: loved_reaction
+    mode: restart
+    then:
+      - lambda: |-
+          Status::getInstance().isLoved = true;
+          Status::getInstance().addHappiness(10);
+      - delay: 2s
+      - lambda: 'Status::getInstance().isLoved = false;'
 
 display:
   - platform: ili9xxx
@@ -205,4 +206,4 @@ display:
     update_interval: never
     pages:
       - id: eye_page
-        lambda: 'EyeRenderer::render(it);'
+        lambda: 'DeskBuddy::getInstance().render(it);'
