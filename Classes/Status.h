@@ -19,14 +19,22 @@ public:
     Utilities::FloatAnimator blinkAnimator = Utilities::FloatAnimator();
     Utilities::FloatAnimator horizontalMoveAnimator = Utilities::FloatAnimator();
 
-    void setHappiness(int value) {
+    void setHappiness(int value, bool updateLastHappinessChange = true, bool doNotPublishState = false) {
         happinessLevel = std::max(-100, std::min(100, value));
+
+        if (!doNotPublishState) {
+            id(happiness_meter).publish_state(happinessLevel);
+        }
+
         ESP_LOGI("happiness", "New happiness: %d", happinessLevel);
-        lastHappinessChange = esphome::millis();
+
+        if (updateLastHappinessChange) {
+            lastHappinessChange = esphome::millis();
+        }
     }
 
-    void addHappiness(int delta) {
-        id(happiness_meter).publish_state(happinessLevel + delta);
+    void addHappiness(int delta, bool updateLastHappinessChange = true, bool doNotPublishState = false) {
+        setHappiness(happinessLevel + delta, updateLastHappinessChange, doNotPublishState);
     }
 
     int getHappiness() const {
@@ -45,7 +53,7 @@ public:
         } else if (happinessLevel < 0) {
             delta = (int)std::min(happinessLevel * 0.05f, -1.0f);
         }
-        addHappiness(-delta);
+        addHappiness(-delta, false);
     }
 
     bool hasHappinessChanged(int milliseconds) {
