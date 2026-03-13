@@ -37,6 +37,13 @@ ota:
   platform: esphome
 
 api:
+  services:
+    - service: add_happiness
+      variables:
+        change_by: float
+      then:
+        - lambda: |-
+            Status::getInstance().addHappiness(change_by);
 
 logger:
   level: INFO
