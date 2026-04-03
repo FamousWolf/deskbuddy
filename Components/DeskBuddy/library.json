@@ -1,0 +1,15 @@
+{
+  "name": "DeskBuddy",
+  "build": {
+    "flags": [
+      "-I Components/DeskBuddy",
+      "-I Components/DeskBuddy/Utilities",
+      "-I Components/DeskBuddy/States"
+    ],
+    "srcFilter": [
+      "+<*>",
+      "+<../Components/DeskBuddy/Utilities/>",
+      "+<../Components/DeskBuddy/States/>"
+    ]
+  }
+}
