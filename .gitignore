@@ -6,3 +6,4 @@
 /venv/
 /secrets.yaml
 *.pyc
+/.vscode/
