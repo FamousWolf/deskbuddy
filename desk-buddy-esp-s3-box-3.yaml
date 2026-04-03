@@ -2,18 +2,25 @@ esphome:
   name: desk-buddy-esp-s3-box-3
   friendly_name: Desk Buddy
   includes:
-    - Classes/
+    - Components/DeskBuddy/States
+    - Components/DeskBuddy/Utilities
   platformio_options:
     build_flags:
-      - '-IClasses/'
+      - -IComponents/DeskBuddy
+      - -IComponents/DeskBuddy/Utilities
+      - -IComponents/DeskBuddy/States
   on_boot:
     priority: -100
     then:
+      - lambda: |-
+          id(MyDeskBuddy)->setHappinessMeter(id(happiness_meter));
+          id(MyDeskBuddy)->setDisplay(id(s3_box_lcd));
       - delay: 1s
-      - lambda: 'DeskBuddy::getInstance().initInProgress = false;'
       - script.execute: blink_animation
       - script.execute: horizontal_move_animation
-      - display.page.show: eye_page
+
+external_components:
+  - source: Components
 
 esp32:
   board: esp32s3box
@@ -43,7 +50,7 @@ api:
         change_by: float
       then:
         - lambda: |-
-            Status::getInstance().addHappiness(change_by);
+            id(MyDeskBuddy).addHappiness(change_by);
 
 logger:
   level: INFO
@@ -141,7 +148,7 @@ number:
     on_value:
       then:
         - lambda: |-
-            Status::getInstance().setHappiness(id(happiness_meter).state, true, true);
+            id(MyDeskBuddy).setHappiness(id(happiness_meter).state, true, false);
 
 select:
     - platform: template
@@ -156,21 +163,27 @@ select:
         - "Neutral"
         - "Sad"
         - "Scared"
+        - "Sleepy"
+        - "Sleeping"
       on_value:
         then:
           - lambda: |-
-              Status::getInstance().forceState(id(state_selector).current_option());
+              id(MyDeskBuddy).forceState(id(state_selector).current_option());
+
+DeskBuddy:
+  id: MyDeskBuddy
+
 interval:
   - interval: 40ms
     then:
       - if:
           condition:
-            lambda: 'return !DeskBuddy::getInstance().initInProgress;'
+            lambda: 'return !id(MyDeskBuddy).initInProgress;'
           then:
             - component.update: s3_box_lcd
   - interval: 15min
     then:
-      - lambda: 'Status::getInstance().decayHappiness();'
+      - lambda: 'id(MyDeskBuddy).decayHappiness();'
 
 script:
   - id: blink_animation
@@ -180,16 +193,16 @@ script:
           condition:
             lambda: 'return true;'
           then:
-            - delay: !lambda "return (esp_random() % 10001) + 3000;"
+            - delay: !lambda "return (esp_random() % 2001) + 3000;"
             - if:
                 condition:
                   lambda: 'return esp_random() % 10 < 1;'
                 then:
-                  - lambda: 'DeskBuddy::getInstance().startBlinking();'
+                  - lambda: 'id(MyDeskBuddy).startBlinking();'
                   - delay: 250ms
-                  - lambda: 'DeskBuddy::getInstance().startBlinking();'
+                  - lambda: 'id(MyDeskBuddy).startBlinking();'
                 else:
-                  - lambda: 'DeskBuddy::getInstance().startBlinking();'
+                  - lambda: 'id(MyDeskBuddy).startBlinking();'
   - id: horizontal_move_animation
     mode: parallel
     then:
@@ -197,24 +210,28 @@ script:
           condition:
             lambda: 'return true;'
           then:
-            - delay: !lambda "return (esp_random() % 15001) + 5000;"
-            - lambda: 'DeskBuddy::getInstance().startHorizontalMove();'
+            - delay: !lambda "return (esp_random() % 2001) + 3000;"
+            - lambda: 'id(MyDeskBuddy).startHorizontalMove();'
   - id: scared_reaction
     mode: restart
     then:
       - lambda: |-
-          Status::getInstance().isScared = true;
-          Status::getInstance().addHappiness(-10);
+          id(MyDeskBuddy).resetState();
+          id(MyDeskBuddy).isScared = true;
+          id(MyDeskBuddy).addHappiness(-10);
       - delay: 2s
-      - lambda: 'Status::getInstance().isScared = false;'
+      - lambda: |-
+          id(MyDeskBuddy).isScared = false;
   - id: loved_reaction
     mode: restart
     then:
       - lambda: |-
-          Status::getInstance().isLoved = true;
-          Status::getInstance().addHappiness(10);
+          id(MyDeskBuddy).resetState();
+          id(MyDeskBuddy).isLoved = true;
+          id(MyDeskBuddy).addHappiness(10);
       - delay: 2s
-      - lambda: 'Status::getInstance().isLoved = false;'
+      - lambda: |-
+          id(MyDeskBuddy).isLoved = false;
 
 display:
   - platform: ili9xxx
@@ -228,6 +245,3 @@ display:
       number: 48
       inverted: true
     update_interval: never
-    pages:
-      - id: eye_page
-        lambda: 'DeskBuddy::getInstance().render(it);'
