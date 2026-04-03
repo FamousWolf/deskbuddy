@@ -49,8 +49,6 @@ namespace DeskBuddy {
 
         if (this->hasForcedState("") && !this->hasHappinessChanged(300000)) {
             if (this->isCurrentState("Sleepy") && !this->hasStateChanged(30000)) {
-                this->isSleepy = false;
-
                 float randomValue = esp_random() % 100;
                 if (randomValue < 50) {
                     this->isSleeping = true;
